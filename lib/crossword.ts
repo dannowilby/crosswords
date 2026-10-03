@@ -39,74 +39,97 @@ export function filter_tile_word(word_list: WordList, tiles: Tile[]): Tile[] {
 
 }
 
-/**
- * Collapses the possible options for the free spaces in the board based on the
- * word list. The rows are collapsed first, and then the columns.
- */
-export function collapse(word_list: WordList, board: Board): Board {
-
-
-    // get rows first
+function collapse_rows(word_list: WordList, board: Board): Board {
     for (let i = 0; i < board.height; i++) {
 
         let word: Tile[] = [];
+        let start = 0;
 
-        for (let j = 0; j < board.width; j++) {
+        // step one past the end so the last word is handled like it hit a
+        // non-editible tile
+        for (let j = 0; j <= board.width; j++) {
 
-            if ((!board.tiles[j][i].editible || j == board.width - 1) && word.length > 1) {
+            if (j < board.width && board.tiles[j][i].editible) {
+                if (word.length == 0)
+                    start = j;
+
+                word.push(board.tiles[j][i]);
+                continue;
+            }
+
+            // a single tile is not a word, so it is left unconstrained
+            if (word.length > 1) {
                 // update word to include possible values
-
-                if (j == board.width - 1)
-                    word.push(board.tiles[j][i]);
-
                 let new_tiles = filter_tile_word(word_list, word);
 
                 // replace the tiles
                 for (let k = 0; k < new_tiles.length; k++) {
-                    board.tiles[j - new_tiles.length + k + 1][i] = new_tiles[k];
+                    board.tiles[start + k][i] = new_tiles[k];
                 }
-
-                word = [];
-                continue;
             }
 
-            word.push(board.tiles[j][i]);
-
-        }
-
-    }
-
-    // now do columns
-    for (let i = 0; i < board.width; i++) {
-
-        let word: Tile[] = [];
-
-        for (let j = 0; j < board.height; j++) {
-
-            if ((!board.tiles[i][j].editible || j == board.height - 1) && word.length >= 1) {
-                // update word to include possible values
-
-                if (j == board.height - 1)
-                    word.push(board.tiles[i][j]);
-
-                let new_tiles = filter_tile_word(word_list, word);
-
-                // replace the tiles
-                for (let k = 0; k < new_tiles.length; k++) {
-                    board.tiles[i][j - new_tiles.length + k + 1] = new_tiles[k];
-                }
-
-                word = [];
-                continue;
-            }
-
-            word.push(board.tiles[i][j]);
+            word = [];
 
         }
 
     }
 
     return board;
+}
+
+function collapse_columns(word_list: WordList, board: Board): Board {
+    for (let i = 0; i < board.width; i++) {
+
+        let word: Tile[] = [];
+        let start = 0;
+
+        // step one past the end so the last word is handled like it hit a
+        // non-editible tile
+        for (let j = 0; j <= board.height; j++) {
+
+            if (j < board.height && board.tiles[i][j].editible) {
+                if (word.length == 0)
+                    start = j;
+
+                word.push(board.tiles[i][j]);
+                continue;
+            }
+
+            // a single tile is not a word, so it is left unconstrained
+            if (word.length > 1) {
+                // update word to include possible values
+                let new_tiles = filter_tile_word(word_list, word);
+
+                // replace the tiles
+                for (let k = 0; k < new_tiles.length; k++) {
+                    board.tiles[i][start + k] = new_tiles[k];
+                }
+            }
+
+            word = [];
+
+        }
+
+    }
+
+    return board;
+}
+
+/**
+ * Collapses the possible options for the free spaces in the board based on the
+ * word list. The rows are collapsed first, and then the columns.
+ */
+export function collapse(word_list: WordList, board: Board): Board {
+
+    let output = board;
+
+    let refinement_passes = 5;
+    for (let i = 0; i < refinement_passes; i++) {
+        output = collapse_columns(word_list, output);
+        output = collapse_rows(word_list, output);
+    }
+
+    return output;
 }
 
 
